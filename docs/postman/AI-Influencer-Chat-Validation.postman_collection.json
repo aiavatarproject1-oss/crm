@@ -1,0 +1,497 @@
+{
+  "info": {
+    "_postman_id": "a18e1001-phase-18-1-validation",
+    "name": "AI Influencer Chat — Phase 18.1 Validation",
+    "description": "Full manual validation flow for the AI Influencer Chat platform.\n\n**How to use**\n1. Import this collection into Postman.\n2. Set `base_url` (default: http://localhost:8000/api).\n3. Run the folder **00 — Full Flow** in order (Collection Runner), or run requests one by one.\n4. IDs (`tenant_id`, `influencer_id`, …) are saved automatically from responses.\n\nRequires: APP_ENV != production, MongoDB, Redis (optional if QUEUE_CONNECTION=sync), Ollama for AI/memory/embeddings.\nInbound auth is off by default (`INBOUND_AUTH_ENABLED=false`).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api" },
+    { "key": "correlation_id", "value": "postman-run-1" },
+    { "key": "api_key", "value": "" },
+    { "key": "tenant_id", "value": "" },
+    { "key": "influencer_id", "value": "" },
+    { "key": "persona_id", "value": "" },
+    { "key": "message_batch_id", "value": "" },
+    { "key": "task_id", "value": "" },
+    { "key": "conversation_id", "value": "" },
+    { "key": "user_id", "value": "" },
+    { "key": "source_id", "value": "" },
+    { "key": "document_id", "value": "" },
+    { "key": "external_message_suffix", "value": "{{$timestamp}}" }
+  ],
+  "auth": {
+    "type": "noauth"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('correlation_id')) {",
+          "  pm.collectionVariables.set('correlation_id', 'postman-run-' + Date.now());",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 — Full Flow (run in order)",
+      "description": "Execute top to bottom. Collection Runner recommended.",
+      "item": [
+        {
+          "name": "01 Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 or 503', function () {",
+                  "  pm.expect([200, 503]).to.include(pm.response.code);",
+                  "});",
+                  "pm.test('Body has success + checks', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('success');",
+                  "  pm.expect(json.data).to.have.property('checks');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" }
+            ],
+            "url": "{{base_url}}/v1/health",
+            "description": "Returns application + MongoDB + Redis + Queue + Ollama status."
+          }
+        },
+        {
+          "name": "02 Create Tenant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Created tenant', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data.tenant_id).to.be.a('string').and.not.empty;",
+                  "  pm.collectionVariables.set('tenant_id', data.tenant_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Studio\"\n}"
+            },
+            "url": "{{base_url}}/v1/dev/tenants",
+            "description": "Dev-only. Saves `tenant_id`."
+          }
+        },
+        {
+          "name": "03 Create Influencer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Created influencer', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data.influencer_id).to.be.a('string').and.not.empty;",
+                  "  pm.collectionVariables.set('influencer_id', data.influencer_id);",
+                  "  if (data.persona_id) {",
+                  "    pm.collectionVariables.set('persona_id', data.persona_id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"name\": \"Sofia\",\n  \"persona\": {\n    \"description\": \"Warm lifestyle coach\",\n    \"language\": \"en\",\n    \"tone\": \"warm\",\n    \"style\": \"friendly\",\n    \"system_rules\": [\"Be respectful\"]\n  }\n}"
+            },
+            "url": "{{base_url}}/v1/dev/influencers",
+            "description": "Dev-only. Saves `influencer_id` (and `persona_id` if returned)."
+          }
+        },
+        {
+          "name": "04 Ingest Knowledge Text",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Knowledge ingested', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data.source_id).to.be.a('string');",
+                  "  pm.expect(data.document_id).to.be.a('string');",
+                  "  pm.collectionVariables.set('source_id', data.source_id);",
+                  "  pm.collectionVariables.set('document_id', data.document_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"title\": \"Shipping FAQ\",\n  \"content\": \"Orders ship within 3 business days. Express shipping arrives in 1 day.\"\n}"
+            },
+            "url": "{{base_url}}/v1/dev/knowledge/text",
+            "description": "KnowledgeSource → chunk → embed → VectorRecord. Needs Ollama embeddings."
+          }
+        },
+        {
+          "name": "05 Search Knowledge",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Search returned results array', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dev/knowledge/search?tenant_id={{tenant_id}}&influencer_id={{influencer_id}}&query=shipping",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "dev", "knowledge", "search"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "influencer_id", "value": "{{influencer_id}}" },
+                { "key": "query", "value": "shipping" }
+              ]
+            },
+            "description": "RAG retrieve: embed query → vector search → ranked chunks."
+          }
+        },
+        {
+          "name": "06 Create Rule (optional)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Rule created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().data.decision).to.eql('BLOCK');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"type\": \"KEYWORD\",\n  \"pattern\": \"spam\",\n  \"decision\": \"BLOCK\",\n  \"priority\": 100,\n  \"name\": \"block spam\"\n}"
+            },
+            "url": "{{base_url}}/v1/dev/rules",
+            "description": "Optional. type: KEYWORD|REGEX. decision: ALLOW_AI|ADMIN_REVIEW|BLOCK|IGNORE."
+          }
+        },
+        {
+          "name": "07 List Rules",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Rules listed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dev/rules?tenant_id={{tenant_id}}&influencer_id={{influencer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "dev", "rules"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "influencer_id", "value": "{{influencer_id}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "08 Send Inbound Message Batch",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('external_message_suffix', String(Date.now()));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Inbound batch accepted', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data.message_batch_id || data.batch_id).to.be.ok;",
+                  "  pm.expect(data.task_id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(data.conversation_id).to.be.a('string').and.not.empty;",
+                  "  pm.collectionVariables.set('message_batch_id', data.message_batch_id || data.batch_id);",
+                  "  pm.collectionVariables.set('task_id', data.task_id);",
+                  "  pm.collectionVariables.set('conversation_id', data.conversation_id);",
+                  "  if (data.user_id) {",
+                  "    pm.collectionVariables.set('user_id', data.user_id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" },
+              { "key": "X-API-Key", "value": "{{api_key}}", "description": "Only needed when INBOUND_AUTH_ENABLED=true" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"platform\": \"telegram\",\n  \"external_user_id\": \"tg-user-100\",\n  \"username\": \"amir\",\n  \"messages\": [\n    {\n      \"external_message_id\": \"msg-hi-{{external_message_suffix}}\",\n      \"text\": \"Hi Sofia\"\n    },\n    {\n      \"external_message_id\": \"msg-tea-{{external_message_suffix}}\",\n      \"text\": \"I like green tea\"\n    }\n  ]\n}"
+            },
+            "url": "{{base_url}}/v1/inbound/messages",
+            "description": "Creates MessageBatch + AiProcessingTask + queue job. Saves message_batch_id, task_id, conversation_id, user_id."
+          }
+        },
+        {
+          "name": "09 Get AI Task Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('AI task returned', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data.id).to.be.ok;",
+                  "  pm.expect(data.status).to.be.a('string');",
+                  "  console.log('AI task status:', data.status, 'attempts:', data.attempts);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" }
+            ],
+            "url": "{{base_url}}/v1/ai/tasks/{{task_id}}",
+            "description": "Poll until COMPLETED / FAILED. With QUEUE_CONNECTION=sync this is usually already done."
+          }
+        },
+        {
+          "name": "10 Get Conversation Messages",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Conversation history returned', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.be.an('array');",
+                  "  pm.expect(data.length).to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/conversations/{{conversation_id}}/messages?tenant_id={{tenant_id}}&influencer_id={{influencer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "conversations", "{{conversation_id}}", "messages"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "influencer_id", "value": "{{influencer_id}}" }
+              ]
+            },
+            "description": "Ordered messages: user + assistant roles."
+          }
+        },
+        {
+          "name": "11 Trigger Memory Extraction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Memory extraction ran', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.have.property('candidates_created');",
+                  "  pm.expect(data).to.have.property('memories_created');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": "{{base_url}}/v1/dev/memory/extract/{{message_batch_id}}",
+            "description": "Manual trigger: extract → evaluate → consolidate. Needs Ollama."
+          }
+        },
+        {
+          "name": "12 List User Memories",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Memories listed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/memory/users/{{user_id}}?tenant_id={{tenant_id}}&influencer_id={{influencer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "memory", "users", "{{user_id}}"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "influencer_id", "value": "{{influencer_id}}" }
+              ]
+            },
+            "description": "Active memories. Types: PROFILE, PREFERENCE, FACT, RELATIONSHIP, EVENT, GOAL."
+          }
+        },
+        {
+          "name": "13 List Admin Tasks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin tasks listed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/admin/tasks?tenant_id={{tenant_id}}&influencer_id={{influencer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "tasks"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "influencer_id", "value": "{{influencer_id}}" }
+              ]
+            },
+            "description": "Pending review / failed quality tasks."
+          }
+        }
+      ]
+    }
+  ]
+}

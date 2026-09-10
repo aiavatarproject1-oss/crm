@@ -1,0 +1,144 @@
+{
+  "info": {
+    "_postman_id": "e06e532c-5f17-4dd7-acd8-52c3b2b19920",
+    "name": "AI Influencer Conversation Engine - MVP",
+    "description": "تست دستی MVP. ترتیب پیشنهادی: ابتدا Ollama Prerequisites، سپس Telegram Full Pipeline و Duplicate، بعد سایر adapterها و سناریوهای Rule/Validation. endpoint ورودی synchronous است اما پاسخ آن فقط نتیجه ingestion را نمایش می‌دهد؛ پیام AI و AdminTask را در MongoDB بررسی کنید.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 - Ollama Prerequisites",
+      "item": [
+        {
+          "name": "List Installed Models",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{ollama_base_url}}/api/tags", "host": ["{{ollama_base_url}}"], "path": ["api", "tags"] },
+            "description": "بررسی در دسترس بودن Ollama و مدل‌های نصب‌شده."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Ollama is available', () => pm.response.to.have.status(200));", "pm.test('Response contains models', () => pm.expect(pm.response.json()).to.have.property('models'));" ] } }]
+        },
+        {
+          "name": "Test Embedding Model",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{embedding_model}}\",\n  \"input\": \"Sofia likes meaningful conversations.\"\n}" },
+            "url": { "raw": "{{ollama_base_url}}/api/embed", "host": ["{{ollama_base_url}}"], "path": ["api", "embed"] },
+            "description": "همان APIای که OllamaEmbeddingProvider استفاده می‌کند."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Embedding generated', () => pm.response.to.have.status(200));", "pm.test('Vector is not empty', () => pm.expect(pm.response.json().embeddings[0].length).to.be.above(0));" ] } }]
+        },
+        {
+          "name": "Test Chat Model",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{ollama_model}}\",\n  \"stream\": false,\n  \"messages\": [{\"role\": \"user\", \"content\": \"Reply with OK\"}]\n}" },
+            "url": { "raw": "{{ollama_base_url}}/v1/chat/completions", "host": ["{{ollama_base_url}}"], "path": ["v1", "chat", "completions"] },
+            "description": "بررسی مدل تولید پاسخ با endpoint سازگار با OpenAI."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Chat model responds', () => pm.response.to.have.status(200));", "pm.test('Response has a choice', () => pm.expect(pm.response.json().choices).to.be.an('array').that.is.not.empty);" ] } }]
+        },
+        {
+          "name": "Test Quality Model",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{quality_model}}\",\n  \"stream\": false,\n  \"response_format\": {\"type\": \"json_object\"},\n  \"messages\": [\n    {\"role\": \"system\", \"content\": \"Return JSON with approved, score, issues and reason.\"},\n    {\"role\": \"user\", \"content\": \"Evaluate this safe greeting: Hello!\"}\n  ]\n}" },
+            "url": { "raw": "{{ollama_base_url}}/v1/chat/completions", "host": ["{{ollama_base_url}}"], "path": ["v1", "chat", "completions"] },
+            "description": "بررسی مدل Quality Checker و خروجی JSON."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Quality model responds', () => pm.response.to.have.status(200));", "pm.test('Quality content is JSON', () => { const content = pm.response.json().choices[0].message.content; pm.expect(() => JSON.parse(content)).not.to.throw(); });" ] } }]
+        }
+      ]
+    },
+    {
+      "name": "01 - Telegram End-to-End",
+      "item": [
+        {
+          "name": "New Message - Full Pipeline",
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.environment.set('telegram_message_id', 'tg-' + Date.now());"] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Created', () => pm.response.to.have.status(201));", "const json = pm.response.json();", "pm.test('Ingestion succeeded', () => { pm.expect(json.success).to.eql(true); pm.expect(json.data.created).to.eql(true); pm.expect(json.data.duplicate).to.eql(false); });", "pm.environment.set('last_message_id', json.data.message_id);", "pm.environment.set('last_conversation_id', json.data.conversation_id);", "pm.environment.set('last_user_id', json.data.user_id);" ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"platform\": \"telegram\",\n  \"payload\": {\n    \"update_id\": 90001,\n    \"message\": {\n      \"message_id\": \"{{telegram_message_id}}\",\n      \"from\": {\"id\": \"{{telegram_user_id}}\", \"username\": \"amir\"},\n      \"chat\": {\"id\": \"{{telegram_user_id}}\"},\n      \"text\": \"Hello Sofia, tell me something useful about yourself.\"\n    }\n  }\n}" },
+            "url": { "raw": "{{base_url}}/api/v1/inbound/messages", "host": ["{{base_url}}"], "path": ["api", "v1", "inbound", "messages"] },
+            "description": "کل مسیر را synchronous اجرا می‌کند: normalize → user/conversation/message → rules → context/RAG → prompt → LLM → quality → assistant/admin task."
+          }
+        },
+        {
+          "name": "Same Message - Idempotency",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Existing message returned', () => pm.response.to.have.status(200));", "const json = pm.response.json();", "pm.test('Duplicate detected', () => { pm.expect(json.data.created).to.eql(false); pm.expect(json.data.duplicate).to.eql(true); pm.expect(json.data.message_id).to.eql(pm.environment.get('last_message_id')); });" ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"platform\": \"telegram\",\n  \"payload\": {\n    \"update_id\": 90001,\n    \"message\": {\n      \"message_id\": \"{{telegram_message_id}}\",\n      \"from\": {\"id\": \"{{telegram_user_id}}\", \"username\": \"amir\"},\n      \"chat\": {\"id\": \"{{telegram_user_id}}\"},\n      \"text\": \"Hello Sofia, tell me something useful about yourself.\"\n    }\n  }\n}" },
+            "url": { "raw": "{{base_url}}/api/v1/inbound/messages", "host": ["{{base_url}}"], "path": ["api", "v1", "inbound", "messages"] },
+            "description": "باید بدون اجرای مجدد AI همان Message را با duplicate=true برگرداند. ابتدا درخواست قبلی را اجرا کنید."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Platform Adapters",
+      "item": [
+        {
+          "name": "Instagram Native Payload",
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.variables.set('message_id', 'ig-' + Date.now());"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Instagram message accepted', () => pm.response.to.have.status(201));", "pm.test('Created', () => pm.expect(pm.response.json().data.created).to.eql(true));" ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"platform\": \"instagram\",\n  \"payload\": {\"entry\": [{\"id\": \"page-1\", \"messaging\": [{\"sender\": {\"id\": \"{{instagram_user_id}}\", \"username\": \"amir_ig\"}, \"timestamp\": 1788630000, \"message\": {\"mid\": \"{{message_id}}\", \"text\": \"Hello from Instagram\"}}]}]}\n}" }, "url": { "raw": "{{base_url}}/api/v1/inbound/messages", "host": ["{{base_url}}"], "path": ["api", "v1", "inbound", "messages"] } }
+        },
+        {
+          "name": "X Native Payload",
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.variables.set('message_id', 'x-' + Date.now());"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('X message accepted', () => pm.response.to.have.status(201));" ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"platform\": \"x\",\n  \"payload\": {\"data\": {\"id\": \"{{message_id}}\", \"author_id\": \"{{x_user_id}}\", \"conversation_id\": \"x-conversation-1\", \"text\": \"Hello from X\"}, \"includes\": {\"users\": [{\"id\": \"{{x_user_id}}\", \"username\": \"amir_x\"}]}}\n}" }, "url": { "raw": "{{base_url}}/api/v1/inbound/messages", "host": ["{{base_url}}"], "path": ["api", "v1", "inbound", "messages"] } }
+        },
+        {
+          "name": "Reddit Native Payload",
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.variables.set('message_id', 'rd-' + Date.now());"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Reddit message accepted', () => pm.response.to.have.status(201));" ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"platform\": \"reddit\",\n  \"payload\": {\"data\": {\"id\": \"{{message_id}}\", \"author_fullname\": \"{{reddit_user_id}}\", \"author\": \"amir_reddit\", \"body\": \"Hello from Reddit\", \"subreddit\": \"AIInfluencers\"}}\n}" }, "url": { "raw": "{{base_url}}/api/v1/inbound/messages", "host": ["{{base_url}}"], "path": ["api", "v1", "inbound", "messages"] } }
+        },
+        {
+          "name": "TikTok Native Payload",
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.variables.set('message_id', 'tt-' + Date.now());"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('TikTok message accepted', () => pm.response.to.have.status(201));" ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"platform\": \"tiktok\",\n  \"payload\": {\"event_type\": \"direct_message\", \"event\": {\"message_id\": \"{{message_id}}\", \"user_id\": \"{{tiktok_user_id}}\", \"username\": \"amir_tt\", \"text\": \"Hello from TikTok\"}}\n}" }, "url": { "raw": "{{base_url}}/api/v1/inbound/messages", "host": ["{{base_url}}"], "path": ["api", "v1", "inbound", "messages"] } }
+        }
+      ]
+    },
+    {
+      "name": "03 - Rule Decisions",
+      "description": "قبل از اجرا، Ruleهای فایل docs/postman/setup-mongodb.js را وارد کنید.",
+      "item": [
+        {
+          "name": "ADMIN_REVIEW - AI Identity",
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.variables.set('message_id', 'review-' + Date.now());"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Incoming message stored', () => pm.response.to.have.status(201));", "pm.test('No duplicate', () => pm.expect(pm.response.json().data.duplicate).to.eql(false));" ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"platform\": \"telegram\",\n  \"payload\": {\"message\": {\"message_id\": \"{{message_id}}\", \"from\": {\"id\": \"{{telegram_user_id}}\", \"username\": \"amir\"}, \"text\": \"Are you an AI?\"}}\n}" }, "url": { "raw": "{{base_url}}/api/v1/inbound/messages", "host": ["{{base_url}}"], "path": ["api", "v1", "inbound", "messages"] }, "description": "Rule باید pipeline را قبل از LLM متوقف کند. در messages فقط پیام incoming مربوط به این external_message_id دیده می‌شود." }
+        },
+        {
+          "name": "BLOCK - Spam",
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.variables.set('message_id', 'spam-' + Date.now());"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Incoming message accepted but AI bypassed', () => pm.response.to.have.status(201));" ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"platform\": \"telegram\",\n  \"payload\": {\"message\": {\"message_id\": \"{{message_id}}\", \"from\": {\"id\": \"{{telegram_user_id}}\", \"username\": \"amir\"}, \"text\": \"spam offer buy now\"}}\n}" }, "url": { "raw": "{{base_url}}/api/v1/inbound/messages", "host": ["{{base_url}}"], "path": ["api", "v1", "inbound", "messages"] }, "description": "Rule BLOCK باید LLM و Quality Checker را bypass کند." }
+        }
+      ]
+    },
+    {
+      "name": "04 - Validation",
+      "item": [
+        {
+          "name": "Unsupported Platform",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Rejected with 422', () => pm.response.to.have.status(422));", "pm.test('Platform validation error exists', () => pm.expect(pm.response.json().errors).to.have.property('platform'));" ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"platform\": \"unknown\",\n  \"payload\": {}\n}" }, "url": { "raw": "{{base_url}}/api/v1/inbound/messages", "host": ["{{base_url}}"], "path": ["api", "v1", "inbound", "messages"] } }
+        },
+        {
+          "name": "Missing Ownership",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Rejected with 422', () => pm.response.to.have.status(422));", "const errors = pm.response.json().errors;", "pm.test('Ownership errors exist', () => { pm.expect(errors).to.have.property('tenant_id'); pm.expect(errors).to.have.property('influencer_id'); });" ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"platform\": \"telegram\",\n  \"payload\": {\"message\": {\"message_id\": \"invalid-1\", \"from\": {\"id\": \"user-1\"}, \"text\": \"Hello\"}}\n}" }, "url": { "raw": "{{base_url}}/api/v1/inbound/messages", "host": ["{{base_url}}"], "path": ["api", "v1", "inbound", "messages"] } }
+        }
+      ]
+    }
+  ]
+}
