@@ -9,6 +9,10 @@ use App\Application\AI\Contracts\LlmGatewayInterface;
 use App\Application\AI\Contracts\MessageAiPipelineInterface;
 use App\Application\AI\Contracts\PromptBuilderInterface;
 use App\Application\AI\Prompt\ContextPromptBuilder;
+use App\Application\AI\Services\PromptPolicyService;
+use App\Application\Context\BuildConversationContextHandler;
+use App\Application\Context\BuildPersonaContextHandler;
+use App\Application\Context\Services\SalesFunnelStageResolver;
 use App\Application\Contracts\AdminTaskRepositoryInterface;
 use App\Application\Contracts\AiProcessingTaskRepositoryInterface;
 use App\Application\Contracts\ConversationRepositoryInterface;
@@ -20,6 +24,7 @@ use App\Application\Contracts\MemoryRepositoryInterface;
 use App\Application\Contracts\MessageBatchRepositoryInterface;
 use App\Application\Contracts\MessageRepositoryInterface;
 use App\Application\Contracts\PersonaRepositoryInterface;
+use App\Application\Contracts\PromptPolicyRepositoryInterface;
 use App\Application\Contracts\RuleRepositoryInterface;
 use App\Application\Contracts\UserRepositoryInterface;
 use App\Application\Contracts\VectorRecordRepositoryInterface;
@@ -76,6 +81,7 @@ use App\Infrastructure\Persistence\MongoDB\Repositories\MongoMemoryRepository;
 use App\Infrastructure\Persistence\MongoDB\Repositories\MongoMessageBatchRepository;
 use App\Infrastructure\Persistence\MongoDB\Repositories\MongoMessageRepository;
 use App\Infrastructure\Persistence\MongoDB\Repositories\MongoPersonaRepository;
+use App\Infrastructure\Persistence\MongoDB\Repositories\MongoPromptPolicyRepository;
 use App\Infrastructure\Persistence\MongoDB\Repositories\MongoRuleEvaluationRepository;
 use App\Infrastructure\Persistence\MongoDB\Repositories\MongoUserRepository;
 use App\Infrastructure\Persistence\MongoDB\Repositories\MongoVectorStore;
@@ -99,7 +105,22 @@ class InfrastructureServiceProvider extends ServiceProvider
 
         $this->app->bind(UserRepositoryInterface::class, MongoUserRepository::class);
         $this->app->bind(AdminTaskRepositoryInterface::class, MongoAdminTaskRepository::class);
+        $this->app->bind(PromptPolicyRepositoryInterface::class, MongoPromptPolicyRepository::class);
+        $this->app->bind(PromptPolicyService::class, PromptPolicyService::class);
         $this->app->bind(PromptBuilderInterface::class, ContextPromptBuilder::class);
+        $this->app->singleton(SalesFunnelStageResolver::class, fn (): SalesFunnelStageResolver => new SalesFunnelStageResolver(
+            (int) config('chat.sales_funnel.warmup_max_user_messages', SalesFunnelStageResolver::DEFAULT_WARMUP_MAX_USER_MESSAGES),
+            (int) config('chat.sales_funnel.tease_max_user_messages', SalesFunnelStageResolver::DEFAULT_TEASE_MAX_USER_MESSAGES),
+            array_values((array) config('chat.sales_funnel.buy_intent_keywords', SalesFunnelStageResolver::DEFAULT_BUY_INTENT_KEYWORDS)),
+        ));
+        $this->app->bind(BuildConversationContextHandler::class, fn ($app): BuildConversationContextHandler => new BuildConversationContextHandler(
+            $app->make(MessageRepositoryInterface::class),
+            $app->make(MemoryRepositoryInterface::class),
+            $app->make(BuildPersonaContextHandler::class),
+            $app->make(KnowledgeRetrieverInterface::class),
+            $app->make(SalesFunnelStageResolver::class),
+            (bool) config('rag.enabled', true),
+        ));
         $this->app->bind(ConversationRepositoryInterface::class, MongoConversationRepository::class);
         $this->app->bind(KnowledgeDocumentRepositoryInterface::class, MongoKnowledgeDocumentRepository::class);
         $this->app->bind(KnowledgeChunkRepositoryInterface::class, MongoKnowledgeChunkRepository::class);

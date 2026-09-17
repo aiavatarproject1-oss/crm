@@ -116,6 +116,7 @@ final readonly class KnowledgeIngestionService
 
             return new KnowledgeIngestionResult($source, $document, $chunks, true, false, 'Knowledge ingested.');
         } catch (Throwable $exception) {
+            dd($exception);
             $source->markFailed($exception->getMessage());
             $this->sources->save($source);
 

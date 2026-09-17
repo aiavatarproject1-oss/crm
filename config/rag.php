@@ -10,7 +10,13 @@ return [
     | Production retrieval quality knobs. Vector backends stay behind
     | RetrievalStrategyInterface / VectorStoreInterface.
     |
+    | enabled=false skips knowledge retrieval in the chat pipeline only
+    | (no embed call / no vector search during conversation turns).
+    | Dev knowledge ingest/search endpoints stay available.
+    |
     */
+
+    'enabled' => filter_var(env('RAG_ENABLED', true), FILTER_VALIDATE_BOOL),
 
     'min_score' => (float) env('RAG_MIN_SCORE', 0.25),
 

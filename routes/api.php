@@ -6,6 +6,7 @@ use App\Interfaces\Http\Controllers\ConversationMessageController;
 use App\Interfaces\Http\Controllers\Dev\DevInfluencerController;
 use App\Interfaces\Http\Controllers\Dev\DevKnowledgeController;
 use App\Interfaces\Http\Controllers\Dev\DevMemoryExtractionController;
+use App\Interfaces\Http\Controllers\Dev\DevPromptPolicyController;
 use App\Interfaces\Http\Controllers\Dev\DevRuleController;
 use App\Interfaces\Http\Controllers\Dev\DevTenantController;
 use App\Interfaces\Http\Controllers\HealthController;
@@ -38,4 +39,6 @@ Route::middleware([EnsureNonProduction::class])->prefix('v1/dev')->group(functio
     Route::get('/knowledge/search', [DevKnowledgeController::class, 'search']);
     Route::post('/rules', [DevRuleController::class, 'store']);
     Route::get('/rules', [DevRuleController::class, 'index']);
+    Route::get('/prompt-policy', [DevPromptPolicyController::class, 'show']);
+    Route::put('/prompt-policy', [DevPromptPolicyController::class, 'update']);
 });

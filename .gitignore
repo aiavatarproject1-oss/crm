@@ -16,7 +16,12 @@
 /public/build
 /public/hot
 /public/storage
+/public/demo-ids.json
+/public/test-console.TEMP.html
+/public/admin-prompt.TEMP.html
 /storage/*.key
+/storage/app/demo-ids.json
+/_architecture-overview.TEMP.html
 /storage/pail
 /vendor
 Homestead.json
