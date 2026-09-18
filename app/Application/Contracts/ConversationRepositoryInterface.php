@@ -14,9 +14,9 @@ interface ConversationRepositoryInterface extends RepositoryInterface
     public function find(ConversationId $conversationId): ?Conversation;
 
     /**
-     * Resolve the active conversation for a user talking to an influencer on a platform.
+     * Resolve the open conversation for a user talking to an influencer on a platform.
      *
-     * Scope: tenant_id + influencer_id + user_id + platform + status=active
+     * Scope: tenant_id + influencer_id + user_id + platform + status in (active, handoff, paused)
      */
     public function findActive(TenantId $tenantId, InfluencerId $influencerId, UserId $userId, string $platform): ?Conversation;
 

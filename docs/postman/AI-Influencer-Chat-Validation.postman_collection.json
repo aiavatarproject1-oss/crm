@@ -18,7 +18,9 @@
     { "key": "user_id", "value": "" },
     { "key": "source_id", "value": "" },
     { "key": "document_id", "value": "" },
-    { "key": "external_message_suffix", "value": "{{$timestamp}}" }
+    { "key": "external_message_suffix", "value": "{{$timestamp}}" },
+    { "key": "media_url", "value": "https://picsum.photos/seed/estelle-test/800/1000.jpg" },
+    { "key": "media_mime_type", "value": "image/jpeg" }
   ],
   "auth": {
     "type": "noauth"
@@ -322,7 +324,57 @@
               "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"platform\": \"telegram\",\n  \"external_user_id\": \"tg-user-100\",\n  \"username\": \"amir\",\n  \"messages\": [\n    {\n      \"external_message_id\": \"msg-hi-{{external_message_suffix}}\",\n      \"text\": \"Hi Sofia\"\n    },\n    {\n      \"external_message_id\": \"msg-tea-{{external_message_suffix}}\",\n      \"text\": \"I like green tea\"\n    }\n  ]\n}"
             },
             "url": "{{base_url}}/v1/inbound/messages",
-            "description": "Creates MessageBatch + AiProcessingTask + queue job. Saves message_batch_id, task_id, conversation_id, user_id."
+            "description": "Creates MessageBatch + AiProcessingTask + queue job. Saves message_batch_id, task_id, conversation_id, user_id.\n\nMedia is **not** multipart upload. Pass a durable public `media[].url` (bot must re-host platform CDN links)."
+          }
+        },
+        {
+          "name": "08b Inbound Message Batch + Image Media",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('external_message_suffix', String(Date.now()));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Inbound media batch accepted', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data.message_batch_id || data.batch_id).to.be.ok;",
+                  "  pm.expect(data.task_id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(data.conversation_id).to.be.a('string').and.not.empty;",
+                  "  pm.collectionVariables.set('message_batch_id', data.message_batch_id || data.batch_id);",
+                  "  pm.collectionVariables.set('task_id', data.task_id);",
+                  "  pm.collectionVariables.set('conversation_id', data.conversation_id);",
+                  "  if (data.user_id) {",
+                  "    pm.collectionVariables.set('user_id', data.user_id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "{{correlation_id}}" },
+              { "key": "X-API-Key", "value": "{{api_key}}", "description": "Only needed when INBOUND_AUTH_ENABLED=true" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"influencer_id\": \"{{influencer_id}}\",\n  \"platform\": \"telegram\",\n  \"external_user_id\": \"tg-user-100\",\n  \"username\": \"amir\",\n  \"messages\": [\n    {\n      \"external_message_id\": \"msg-hi-{{external_message_suffix}}\",\n      \"text\": \"Hi Sofia\"\n    },\n    {\n      \"external_message_id\": \"msg-photo-{{external_message_suffix}}\",\n      \"content_type\": \"image\",\n      \"text\": \"Guess my age and gender from this photo\",\n      \"media\": [\n        {\n          \"url\": \"{{media_url}}\",\n          \"type\": \"image\",\n          \"mime_type\": \"{{media_mime_type}}\"\n        }\n      ]\n    }\n  ]\n}"
+            },
+            "url": "{{base_url}}/v1/inbound/messages",
+            "description": "Same inbound endpoint with an image turn.\n\n- Set collection/env var `media_url` to a **public HTTPS URL** of the image (not a local file path).\n- Optional: `media_mime_type` (default image/jpeg).\n- API stores URL under message metadata.\n- If the batch has image URLs, queue pipeline calls `qwen2.5vl:7b` (OLLAMA_VISION_MODEL) once, then the chat LLM. No images → vision is skipped.\n- Do not use multipart/form-data; body stays JSON.\n- Restart queue worker after pulling vision code: `php artisan queue:restart`."
           }
         },
         {

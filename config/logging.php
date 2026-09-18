@@ -65,6 +65,29 @@ return [
             'replace_placeholders' => true,
         ],
 
+        /*
+        | Dedicated inbound → vision → chat monitoring (not mixed into laravel.log).
+        | Tail: storage/logs/pipeline.log
+        */
+        'pipeline' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/pipeline.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
+        /*
+        | Admin actions (login, CRUD, permission changes). Mirrored in the `audit_logs` collection.
+        | Tail: storage/logs/audit.log
+        */
+        'audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/audit.log'),
+            'level' => 'info',
+            'days' => (int) env('LOG_AUDIT_RETENTION_DAYS', 90),
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

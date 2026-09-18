@@ -14,7 +14,7 @@ final class InboundCredentialResolverTest extends TestCase
         Config::set('inbound.credentials', [
             'key-a' => [
                 'tenant_id' => 'tenant-a',
-                'influencers' => ['inf-1'],
+                'characters' => ['char-1'],
             ],
         ]);
 
@@ -22,8 +22,8 @@ final class InboundCredentialResolverTest extends TestCase
 
         self::assertInstanceOf(InboundCredential::class, $credential);
         self::assertSame('tenant-a', $credential->tenantId);
-        self::assertTrue($credential->allowsInfluencer('inf-1'));
-        self::assertFalse($credential->allowsInfluencer('inf-2'));
+        self::assertTrue($credential->allowsCharacter('char-1'));
+        self::assertFalse($credential->allowsCharacter('char-2'));
     }
 
     public function test_unknown_api_key_returns_null(): void

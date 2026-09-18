@@ -11,12 +11,9 @@ use App\Domain\Tenant\ValueObjects\TenantId;
 use App\Infrastructure\Persistence\MongoDB\Documents\AiProcessingTaskDocument;
 use App\Infrastructure\Persistence\MongoDB\Mappers\AiProcessingTaskMapper;
 use App\Infrastructure\Persistence\MongoDB\Support\ExplicitIdPersister;
-use MongoDB\Collection;
 
 final class MongoAiProcessingTaskRepository implements AiProcessingTaskRepositoryInterface
 {
-    private bool $indexesEnsured = false;
-
     public function __construct(private readonly AiProcessingTaskMapper $mapper) {}
 
     public function find(AiProcessingTaskId $taskId): ?AiProcessingTask
@@ -42,7 +39,6 @@ final class MongoAiProcessingTaskRepository implements AiProcessingTaskRepositor
 
     public function save(AiProcessingTask $task): void
     {
-        $this->ensureIndexes();
         ExplicitIdPersister::save(
             $this->mapper->toDocument($task),
             (string) $task->id(),
@@ -52,36 +48,5 @@ final class MongoAiProcessingTaskRepository implements AiProcessingTaskRepositor
                 ->where('message_batch_id', (string) $task->messageBatchId)
                 ->first(),
         );
-    }
-
-    private function ensureIndexes(): void
-    {
-        if ($this->indexesEnsured) {
-            return;
-        }
-
-        AiProcessingTaskDocument::raw(static function (Collection $collection): void {
-            $collection->createIndexes([
-                [
-                    'key' => [
-                        'tenant_id' => 1,
-                        'influencer_id' => 1,
-                        'message_batch_id' => 1,
-                    ],
-                    'name' => 'ai_processing_tasks_batch_unique',
-                    'unique' => true,
-                ],
-                [
-                    'key' => [
-                        'tenant_id' => 1,
-                        'influencer_id' => 1,
-                        'status' => 1,
-                        'started_at' => -1,
-                    ],
-                    'name' => 'ai_processing_tasks_status',
-                ],
-            ]);
-        });
-        $this->indexesEnsured = true;
     }
 }

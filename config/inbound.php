@@ -24,21 +24,25 @@ return [
     | API Credentials
     |--------------------------------------------------------------------------
     |
-    | Map plaintext API keys to tenant ownership. Prefer environment-specific
-    | keys in deployment; never commit production secrets.
+    | Map plaintext API keys to tenant ownership.
     |
-    | influencers:
-    |   - explicit ids allowed for that tenant
-    |   - ["*"] allows any influencer_id under the tenant (dev only)
+    | characters:
+    |   - explicit AI Character ids allowed for that tenant
+    |   - ["*"] allows any character_id under the tenant (dev only)
+    |
+    | Legacy env INBOUND_API_KEY_DEMO_INFLUENCERS is still read as a fallback.
     |
     */
 
     'credentials' => array_filter([
         env('INBOUND_API_KEY_DEMO', 'local-dev-inbound-key') => [
             'tenant_id' => env('INBOUND_API_KEY_DEMO_TENANT', 'tenant-demo'),
-            'influencers' => array_values(array_filter(array_map(
+            'characters' => array_values(array_filter(array_map(
                 'trim',
-                explode(',', (string) env('INBOUND_API_KEY_DEMO_INFLUENCERS', 'influencer-sofia')),
+                explode(',', (string) env(
+                    'INBOUND_API_KEY_DEMO_CHARACTERS',
+                    env('INBOUND_API_KEY_DEMO_INFLUENCERS', 'character-estelle'),
+                )),
             ))),
         ],
     ], static fn ($definition, $key): bool => is_string($key) && $key !== '' && is_array($definition), ARRAY_FILTER_USE_BOTH),

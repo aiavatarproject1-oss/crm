@@ -9,20 +9,26 @@ namespace App\Application\Security;
 final readonly class InboundCredential
 {
     /**
-     * @param  list<string>  $allowedInfluencerIds  Use ['*'] to allow any influencer under the tenant.
+     * @param  list<string>  $allowedCharacterIds  Use ['*'] to allow any AI Character under the tenant.
      */
     public function __construct(
         public string $tenantId,
-        public array $allowedInfluencerIds,
+        public array $allowedCharacterIds,
         public string $credentialId,
     ) {}
 
-    public function allowsInfluencer(string $influencerId): bool
+    public function allowsCharacter(string $characterId): bool
     {
-        if (in_array('*', $this->allowedInfluencerIds, true)) {
+        if (in_array('*', $this->allowedCharacterIds, true)) {
             return true;
         }
 
-        return in_array($influencerId, $this->allowedInfluencerIds, true);
+        return in_array($characterId, $this->allowedCharacterIds, true);
+    }
+
+    /** @deprecated Use allowsCharacter() */
+    public function allowsInfluencer(string $influencerId): bool
+    {
+        return $this->allowsCharacter($influencerId);
     }
 }

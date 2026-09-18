@@ -18,7 +18,7 @@ final class ConfigInboundCredentialResolver implements InboundCredentialResolver
             return null;
         }
 
-        /** @var array<string, array{tenant_id?: string, influencers?: list<string>}> $credentials */
+        /** @var array<string, array{tenant_id?: string, characters?: list<string>, influencers?: list<string>}> $credentials */
         $credentials = (array) config('inbound.credentials', []);
         if (! array_key_exists($apiKey, $credentials)) {
             return null;
@@ -30,11 +30,11 @@ final class ConfigInboundCredentialResolver implements InboundCredentialResolver
             return null;
         }
 
-        $influencers = array_values(array_filter(
-            array_map('strval', (array) ($definition['influencers'] ?? [])),
+        $characters = array_values(array_filter(
+            array_map('strval', (array) ($definition['characters'] ?? $definition['influencers'] ?? [])),
             static fn (string $id): bool => $id !== '',
         ));
 
-        return new InboundCredential($tenantId, $influencers, credentialId: hash('sha256', $apiKey));
+        return new InboundCredential($tenantId, $characters, credentialId: hash('sha256', $apiKey));
     }
 }

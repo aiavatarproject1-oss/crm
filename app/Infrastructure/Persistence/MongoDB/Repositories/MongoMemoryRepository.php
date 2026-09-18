@@ -13,17 +13,13 @@ use App\Domain\User\ValueObjects\UserId;
 use App\Infrastructure\Persistence\MongoDB\Documents\MemoryDocument;
 use App\Infrastructure\Persistence\MongoDB\Mappers\MemoryMapper;
 use App\Infrastructure\Persistence\MongoDB\Support\ExplicitIdPersister;
-use MongoDB\Collection;
 
 final class MongoMemoryRepository implements MemoryRepositoryInterface
 {
-    private bool $indexesEnsured = false;
-
     public function __construct(private readonly MemoryMapper $mapper) {}
 
     public function save(Memory $memory): void
     {
-        $this->ensureIndexes();
         ExplicitIdPersister::save(
             $this->mapper->toDocument($memory),
             (string) $memory->id(),
@@ -83,37 +79,5 @@ final class MongoMemoryRepository implements MemoryRepositoryInterface
     public function findImportantUserMemories(TenantId $tenantId, InfluencerId $influencerId, UserId $userId, int $limit): array
     {
         return $this->findActiveForUser($tenantId, $influencerId, $userId, $limit);
-    }
-
-    private function ensureIndexes(): void
-    {
-        if ($this->indexesEnsured) {
-            return;
-        }
-
-        MemoryDocument::raw(static function (Collection $collection): void {
-            $collection->createIndexes([
-                [
-                    'key' => [
-                        'tenant_id' => 1,
-                        'influencer_id' => 1,
-                        'user_id' => 1,
-                        'status' => 1,
-                        'importance_score' => -1,
-                    ],
-                    'name' => 'memories_scope_status_importance',
-                ],
-                [
-                    'key' => [
-                        'tenant_id' => 1,
-                        'influencer_id' => 1,
-                        'user_id' => 1,
-                        'type' => 1,
-                    ],
-                    'name' => 'memories_scope_type',
-                ],
-            ]);
-        });
-        $this->indexesEnsured = true;
     }
 }

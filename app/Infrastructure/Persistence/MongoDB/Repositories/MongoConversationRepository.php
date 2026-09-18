@@ -31,7 +31,11 @@ final class MongoConversationRepository implements ConversationRepositoryInterfa
             ->where('influencer_id', (string) $influencerId)
             ->where('user_id', (string) $userId)
             ->where('platform', $platform)
-            ->where('status', ConversationStatus::ACTIVE)
+            ->whereIn('status', [
+                ConversationStatus::ACTIVE,
+                ConversationStatus::HANDOFF,
+                ConversationStatus::PAUSED,
+            ])
             ->orderByDesc('last_activity_at')
             ->first();
 

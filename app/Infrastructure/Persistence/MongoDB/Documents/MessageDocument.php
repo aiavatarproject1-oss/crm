@@ -2,12 +2,9 @@
 
 namespace App\Infrastructure\Persistence\MongoDB\Documents;
 
-use MongoDB\Laravel\Eloquent\Model;
 
-final class MessageDocument extends Model
+final class MessageDocument extends BaseDocument
 {
-    protected $connection = 'mongodb';
-
     /**
      * Eloquent uses $table as the MongoDB collection name.
      * $collection is ignored by mongodb/laravel-mongodb and must not be relied on.
@@ -15,8 +12,6 @@ final class MessageDocument extends Model
     protected $table = 'messages';
 
     public $timestamps = false;
-
-    protected $guarded = [];
 
     protected function casts(): array
     {

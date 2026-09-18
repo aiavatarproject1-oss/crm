@@ -174,6 +174,7 @@ final class AsyncAiHarness
             new ContextPromptBuilder,
             new GenerateResponseHandler($this->gateway),
             new AsyncAiQuality,
+            new FakeQualityChecks,
             $this->messages,
             new AiAdminTasks,
             $events,

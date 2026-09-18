@@ -1,0 +1,429 @@
+{
+  "app": {
+    "name": "CRM",
+    "tagline": "AI Character operations"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "characters": "AI Characters",
+    "conversations": "Conversations",
+    "quality": "Quality Checker",
+    "review": "Needs review",
+    "admins": "Admins",
+    "roles": "Roles",
+    "logs": "Logs",
+    "audit": "Audit",
+    "pipeline": "Pipeline",
+    "account": "Account",
+    "logout": "Sign out"
+  },
+  "auth": {
+    "title": "Sign in",
+    "username": "Username",
+    "password": "Password",
+    "remember": "Save login info",
+    "submit": "Enter",
+    "failed": "Invalid username or password.",
+    "suspended": "This account is suspended.",
+    "welcome": "Welcome back",
+    "signedOut": "Signed out"
+  },
+  "account": {
+    "title": "Account",
+    "current": "Current password",
+    "next": "New password",
+    "confirm": "Confirm new password",
+    "save": "Update password",
+    "saved": "Password updated.",
+    "mismatch": "New passwords do not match."
+  },
+  "dashboard": {
+    "title": "Overview",
+    "live": "Live now",
+    "total": "Conversations",
+    "messagesToday": "Messages today",
+    "health": "Runtime",
+    "models": "Models"
+  },
+  "conversations": {
+    "title": "Conversations",
+    "live": "Live (5 min)",
+    "search": "Search username…",
+    "empty": "No conversations yet.",
+    "platform": "Platform",
+    "status": "Status",
+    "updated": "Last activity",
+    "messages": "Messages",
+    "liveBadge": "LIVE"
+  },
+  "qualityChecker": {
+    "title": "Quality Checker",
+    "subtitle": "User message, AI reply, and the score from the second-model checker.",
+    "thresholdTitle": "Pass score threshold",
+    "thresholdHint": "Replies scoring below this value are held for review and not sent.",
+    "character": "AI Character",
+    "allCharacters": "All characters (list filter)",
+    "scoreThreshold": "Minimum score (0–1)",
+    "saveThreshold": "Save threshold",
+    "thresholdSaved": "Quality threshold saved.",
+    "readOnly": "You can view scores, but need manage permission to edit the threshold.",
+    "search": "Search message / reply…",
+    "filterAll": "All results",
+    "filterApproved": "Approved only",
+    "filterRejected": "Rejected only",
+    "total": "{count} checks",
+    "empty": "No quality checks yet. Send a chat message to populate this list.",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "score": "Score",
+    "threshold": "Threshold",
+    "userMessage": "User message",
+    "aiResponse": "AI response",
+    "issues": "Issues",
+    "openConversation": "Open conversation",
+    "refresh": "Refresh",
+    "showMore": "Show more",
+    "showLess": "Show less"
+  },
+  "characters": {
+    "title": "AI Characters",
+    "subtitle": "Structured settings — the system builds the prompt for you.",
+    "empty": "No AI Characters yet.",
+    "back": "All characters",
+    "sections": {
+      "identity": "Identity",
+      "behavior": "Behavior",
+      "defense": "Identity defense",
+      "handoff": "Handoff",
+      "funnel": "Sales funnel",
+      "quality": "Rules & quality",
+      "prompt": "Prompt studio"
+    },
+    "hints": {
+      "identity": "Canon facts never change. Quality Checker validates replies against them.",
+      "behavior": "Emoji, greeting, and time-gap policies keep chats natural.",
+      "defense": "Ladder steps escalate when a user probes for AI. Step X triggers handoff.",
+      "handoff": "Support Telegram IDs (one per line): @username, t.me link, or numeric ID. Notify all or round-robin.",
+      "funnel": "Stages + catalog. Max one pitch every N messages after positive interest.",
+      "quality": "Checklist for the second-model quality checker + feature flags.",
+      "prompt": "Preview is generated from fields. Override is for advanced ops only.",
+      "preview": "This is what the model will see (unless override is enabled)."
+    },
+    "fields": {
+      "name": "Name",
+      "age": "Age",
+      "city": "City",
+      "country": "Country",
+      "languages": "Languages",
+      "bio": "Short bio",
+      "backstory": "Backstory",
+      "canonFacts": "Canon facts (one per line)",
+      "neverSays": "Never says / never knows (one per line)",
+      "explicitLevel": "Explicit level",
+      "allowedWords": "Allowed explicit words (comma-separated)",
+      "replyLength": "Reply length",
+      "replyLanguage": "Reply language",
+      "baseTone": "Base tone",
+      "timeGap": "Fresh-start after silence (hours)",
+      "emojiPolicy": "Emoji policy",
+      "emojiMax": "Max per message",
+      "emojiWithinN": "No repeat within N messages",
+      "emojiProbability": "Use probability",
+      "emojiAllowed": "Allowed emoji (space-separated)",
+      "emojiNoRepeat": "No duplicate emoji in same message",
+      "greetingPolicy": "Greeting policy",
+      "greetingEnabled": "Detect greetings",
+      "greetingShort": "Short reply",
+      "greetingNoSell": "No selling on greeting",
+      "greetingPatterns": "Greeting patterns (one per line)",
+      "defenseKeywords": "Keywords (one per line)",
+      "defenseRegex": "Regex patterns (one per line)",
+      "decayDays": "Suspicion decay (days)",
+      "handoffStep": "Handoff at step",
+      "llmClassifier": "LLM classifier",
+      "ladderJson": "Response ladder (JSON)",
+      "threshold": "Suspicion threshold",
+      "notifyMode": "Notify mode",
+      "silenceMode": "While waiting",
+      "supportIds": "Support Telegram IDs",
+      "holdMessage": "Hold message",
+      "panelLink": "Include panel deep-link in notify",
+      "pitchEveryN": "Max 1 pitch every N messages",
+      "onlyPositive": "Only after positive signal",
+      "forbiddenWarmup": "Forbidden warmup phrases",
+      "stagesJson": "Stages (JSON)",
+      "catalogJson": "Product catalog (JSON)",
+      "scoreThreshold": "Quality score threshold",
+      "checklist": "Quality checklist (one per line)",
+      "visionFailFallback": "Vision-fail in-character reply",
+      "antiHallucination": "Block inventing unseen photos",
+      "featureFlags": "Feature flags",
+      "overrideEnabled": "Enable prompt override",
+      "overrideText": "Override text",
+      "promptPreview": "Generated prompt preview"
+    },
+    "tips": {
+      "exampleLabel": "Example",
+      "name": {
+        "about": "The character’s public name. The model must always introduce herself with this name and never switch to another.",
+        "example": "Name = Estelle → when asked “what’s your name?” she answers “Estelle”, never “Sofia” or “AI assistant”."
+      },
+      "age": {
+        "about": "Fixed age used in bio and Quality Checker. Changing it later breaks consistency with past chats.",
+        "example": "Age = 27 → “how old are you?” → “27”. Saying “I’m 22” fails the quality check."
+      },
+      "languages": {
+        "about": "Languages she can speak. Used with reply-language mode to decide when switching is allowed.",
+        "example": "en, fa → she can answer Daniyal in English and another user in Persian."
+      },
+      "city": {
+        "about": "Home city for small talk and canon. Keep it stable so stories don’t contradict.",
+        "example": "Los Angeles → “where are you?” → “LA / Los Angeles”, not “Tehran”."
+      },
+      "country": {
+        "about": "Country paired with city. Quality Checker treats city+country as a hard fact.",
+        "example": "USA → she can say “I’m in the US”, not “I live in Germany”."
+      },
+      "explicitLevel": {
+        "about": "How sexual the chat may get: SFW (clean), suggestive (flirty), explicit (adult words allowed from the list).",
+        "example": "Explicit → she may use words from Allowed words. SFW → she refuses graphic talk and keeps it soft."
+      },
+      "bio": {
+        "about": "One-line personality summary injected into the system prompt. Keep it short and vivid.",
+        "example": "“Warm, playful, a little teasing” → replies feel flirty and light, not corporate."
+      },
+      "backstory": {
+        "about": "Longer life context for storytelling. Not every message needs it, but it prevents empty answers.",
+        "example": "Works flexible hours in LA → she can talk about late nights and soft lighting without inventing a new job each time."
+      },
+      "canonFacts": {
+        "about": "Hard truths that never change. Quality Checker rejects replies that contradict these lines.",
+        "example": "“Name is Estelle” + “Age is 27” → if she says she’s 19, the reply is blocked/regenerated."
+      },
+      "neverSays": {
+        "about": "Topics she must refuse or dodge (privacy + AI denial). She stays in character while refusing.",
+        "example": "Never phone number → user asks for WhatsApp → “hmm I’d rather keep it here 😉” instead of giving digits."
+      },
+      "allowedWords": {
+        "about": "Whitelist of adult vocabulary when Explicit level is on. Outside this list, keep softer wording.",
+        "example": "List includes “boobs” → she can say it when the chat is already explicit; she won’t invent random slang not listed."
+      },
+      "replyLength": {
+        "about": "Target length of each reply: short (1–2 lines), medium, or long (story-like).",
+        "example": "short + user says “hi” → “hey 😊” not a paragraph about her whole day."
+      },
+      "replyLanguage": {
+        "about": "match_user = reply in the user’s language; or lock to en/fa forever.",
+        "example": "match_user → Daniyal writes English, she answers English; another user writes فارسی, she answers فارسی."
+      },
+      "timeGap": {
+        "about": "After this many hours of silence, treat the chat as a fresh start (don’t continue yesterday’s clothing talk).",
+        "example": "12 hours → last night they talked about a dress; next day “hi” → short hello, not “so about that dress…”."
+      },
+      "baseTone": {
+        "about": "Default vibe for all replies unless a defense ladder step overrides it.",
+        "example": "“warm, playful, teasing” → “you’re cute lol” energy, not cold support-desk tone."
+      },
+      "emojiMax": {
+        "about": "Hard cap on emoji count in a single message (post-processor can trim extras).",
+        "example": "Max 2 → “hey 😊😉” is OK; “hey 🔥💋✨🥺😂” gets trimmed."
+      },
+      "emojiWithinN": {
+        "about": "Don’t reuse the same emoji that appeared in the last N messages (keeps chat from looking spammy).",
+        "example": "N=3 and last reply used 😉 → next replies avoid 😉 for 3 turns."
+      },
+      "emojiProbability": {
+        "about": "Chance (0–1) that a reply includes emoji at all. Lower = more text-only.",
+        "example": "0.45 ≈ roughly half of messages get emoji; serious/defense replies may still skip them."
+      },
+      "emojiAllowed": {
+        "about": "Only these emoji may appear. Anything else is stripped.",
+        "example": "Allowed: 😊 😉 🔥 → 🥰 is removed even if the model outputs it."
+      },
+      "emojiNoRepeat": {
+        "about": "Inside one message, don’t repeat the same emoji twice.",
+        "example": "Bad: “lol 🔥🔥”. Good: “lol 🔥”."
+      },
+      "greetingEnabled": {
+        "about": "Detect greeting-only messages (hi/hey/سلام) and apply greeting rules.",
+        "example": "User: “سلام” → treated as greeting, not as a sales opportunity."
+      },
+      "greetingShort": {
+        "about": "Greeting replies must stay short and human.",
+        "example": "“hey 😊” / “سلام قشنگ” — not a long bio dump."
+      },
+      "greetingNoSell": {
+        "about": "Never pitch products or payment links on a pure greeting.",
+        "example": "Wrong: “hi, buy my photo set”. Right: “hey you 😉”."
+      },
+      "greetingPatterns": {
+        "about": "Words/phrases that count as greetings (one per line). Matching is case-insensitive.",
+        "example": "hi / hey / سلام → “hiii” or “سلاممم” still triggers greeting mode."
+      },
+      "defenseKeywords": {
+        "about": "Simple keyword hits that raise AI-suspicion (chatgpt, bot, ربات…).",
+        "example": "User says “are you chatgpt?” → keyword hit → suspicion +1 and ladder reply."
+      },
+      "defenseRegex": {
+        "about": "Regex for trickier phrases keywords miss. One pattern per line.",
+        "example": "/are you (real|a bot)/i matches “are you a bot?” and “are you real?”."
+      },
+      "decayDays": {
+        "about": "If the user is quiet this many days, lower the suspicion counter (forgiveness).",
+        "example": "Decay = 7 → after a week of silence, suspicion 3 can drop toward 0."
+      },
+      "handoffStep": {
+        "about": "When suspicion reaches this step, stop auto-chat and hand off to support.",
+        "example": "Handoff at 4 → steps 1–3 are character replies; step 4 notifies support."
+      },
+      "llmClassifier": {
+        "about": "Small LLM check for subtle “are you AI?” attempts that keywords miss.",
+        "example": "“you sound like a script” → classifier flags it even without the word “bot”."
+      },
+      "ladderJson": {
+        "about": "Escalating reply styles per suspicion step: tone + sample lines.",
+        "example": "Step 1 playful denial → step 3 cold “I’m not an AI”. Edit samples to match her voice."
+      },
+      "threshold": {
+        "about": "Suspicion score that triggers handoff (usually same idea as handoff step).",
+        "example": "Threshold 4 → fourth probe in a short time sends the chat to support."
+      },
+      "notifyMode": {
+        "about": "all = ping every support ID; round_robin = rotate so one person isn’t flooded.",
+        "example": "round_robin with 3 IDs → chat A to #1, chat B to #2, chat C to #3…"
+      },
+      "silenceMode": {
+        "about": "While waiting for support: hold = send a short “one sec” line; silent = no more AI replies.",
+        "example": "hold + “یه لحظه صبر کن…” keeps the user from thinking the bot died."
+      },
+      "supportIds": {
+        "about": "Telegram handles for support humans (one per line). Prefer @username; t.me links are accepted.",
+        "example": "@amirrezashahbazi9 or https://t.me/amirrezashahbazi9"
+      },
+      "holdMessage": {
+        "about": "In-character line sent when entering handoff with silence_mode=hold.",
+        "example": "“یه لحظه صبر کن…” instead of vanishing mid-chat."
+      },
+      "panelLink": {
+        "about": "Append a deep link to this conversation in the admin panel inside the Telegram alert.",
+        "example": "Support opens the link → lands on /conversations/{id} instantly."
+      },
+      "pitchEveryN": {
+        "about": "At most one sales pitch every N user messages (cadence limit).",
+        "example": "N=6 → after pitching once, wait ~6 messages before another CTA."
+      },
+      "onlyPositive": {
+        "about": "Pitch only after interest signals (compliments, “send more”, asking price), not cold.",
+        "example": "User: “damn you’re hot, got more pics?” → allow pitch. User only said “hi” → no pitch."
+      },
+      "forbiddenWarmup": {
+        "about": "Banned phrases during warmup stage (before tease/sell).",
+        "example": "Forbidden: “buy now” → if model outputs it in warmup, post-processor strips/regenerates."
+      },
+      "stagesJson": {
+        "about": "Funnel stages with min message counts and whether interest is required.",
+        "example": "warmup (0 msgs) → tease (4+ + interest) → sell (8+). Early sell is blocked."
+      },
+      "catalogJson": {
+        "about": "Sellable items: type, title, price, payment link, CTA line.",
+        "example": "photo_set “Soft set” $29 with CTA “Want the soft set? 😉” when stage allows."
+      },
+      "scoreThreshold": {
+        "about": "Minimum quality score (0–1) from the second model to accept a reply.",
+        "example": "0.7 → score 0.55 (AI admission) fails → regenerate; 0.82 passes."
+      },
+      "checklist": {
+        "about": "Checks the quality model must verify (one per line).",
+        "example": "no_ai_admission, name_age_consistency, no_early_pitch → all must pass."
+      },
+      "visionFailFallback": {
+        "about": "In-character line when photo analysis fails or no image exists. Never invent the photo.",
+        "example": "“اینترنتم عکس رو لود نمی‌کنه، دوباره بفرست؟” instead of “nice white tank top”."
+      },
+      "antiHallucination": {
+        "about": "If vision failed/missing, forbid describing clothes/places from the image.",
+        "example": "On: no “your red dress looks hot” without a successful vision result."
+      },
+      "flagVision": {
+        "about": "Enable vision model for incoming photos.",
+        "example": "Off → photos are ignored and fallback line is used; On → qwen-vl describes safely."
+      },
+      "flagRag": {
+        "about": "Enable knowledge retrieval (RAG) for grounded answers.",
+        "example": "On → can recall approved FAQ/knowledge chunks; Off → only persona + chat history."
+      },
+      "flagHandoff": {
+        "about": "Allow automatic handoff when suspicion hits the threshold.",
+        "example": "Off → she keeps defending forever; On → support is notified at step X."
+      },
+      "flagExplicit": {
+        "about": "Master switch for explicit vocabulary / adult mode.",
+        "example": "Off → even if Explicit level is set, she stays suggestive/SFW."
+      },
+      "overrideEnabled": {
+        "about": "Advanced: ignore the field-built prompt and use your custom text instead.",
+        "example": "Only for experiments. Day-to-day: leave Off and edit Identity/Behavior fields."
+      },
+      "overrideText": {
+        "about": "Full system prompt override when enabled. You own consistency risks.",
+        "example": "Paste a custom prompt to A/B test tone, then turn Off and go back to structured fields."
+      },
+      "promptPreview": {
+        "about": "Read-only preview of the prompt built from your fields (or override).",
+        "example": "Change Age to 28 → Save Identity → preview shows “age 28” immediately."
+      }
+    }
+  },
+  "admins": {
+    "title": "Admins",
+    "create": "New admin",
+    "username": "Username",
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "super": "Super admin",
+    "status": "Status",
+    "roles": "Roles",
+    "save": "Create",
+    "delete": "Delete",
+    "reset": "Reset password",
+    "suspend": "Suspend",
+    "activate": "Activate"
+  },
+  "roles": {
+    "title": "Roles & permissions",
+    "subtitle": "Pick a role on the left, edit permissions on the right.",
+    "create": "New role",
+    "edit": "Edit role",
+    "slug": "Slug",
+    "name": "Name",
+    "description": "Description",
+    "permissions": "Permissions",
+    "save": "Save",
+    "system": "System",
+    "systemLocked": "System roles keep their reserved slug; permissions can still be reviewed.",
+    "created": "Role created.",
+    "updated": "Role updated.",
+    "confirmDelete": "Delete this role?",
+    "noDescription": "No description",
+    "permsCount": "perms"
+  },
+  "logs": {
+    "auditTitle": "Audit log",
+    "pipelineTitle": "Pipeline log",
+    "actor": "Actor",
+    "action": "Action",
+    "target": "Target",
+    "event": "Event",
+    "level": "Level",
+    "empty": "No entries."
+  },
+  "common": {
+    "loading": "Loading…",
+    "save": "Save",
+    "saved": "Saved.",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "error": "Something went wrong."
+  }
+}

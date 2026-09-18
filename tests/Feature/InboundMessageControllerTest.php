@@ -50,6 +50,45 @@ final class InboundMessageControllerTest extends TestCase
         Bus::assertDispatched(ProcessConversationTurnJob::class);
     }
 
+    public function test_image_only_message_with_media_is_accepted(): void
+    {
+        Bus::fake();
+        $this->mockInboundPersistence();
+
+        $this->postJson('/api/v1/inbound/messages', [
+            'tenant_id' => 'tenant-1',
+            'influencer_id' => 'influencer-1',
+            'platform' => 'instagram',
+            'external_user_id' => 'ig-user-1',
+            'messages' => [
+                [
+                    'external_message_id' => 'mid.img-1',
+                    'content_type' => 'image',
+                    'media' => [
+                        ['url' => 'https://bridge.example/media/a.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg'],
+                    ],
+                ],
+            ],
+        ])->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.created_count', 1);
+
+        Bus::assertDispatched(ProcessConversationTurnJob::class);
+    }
+
+    public function test_message_without_text_or_media_is_rejected(): void
+    {
+        $this->postJson('/api/v1/inbound/messages', [
+            'tenant_id' => 'tenant-1',
+            'influencer_id' => 'influencer-1',
+            'platform' => 'instagram',
+            'external_user_id' => 'ig-user-1',
+            'messages' => [
+                ['external_message_id' => 'mid.empty'],
+            ],
+        ])->assertUnprocessable()->assertJsonValidationErrors('messages.0');
+    }
+
     public function test_empty_messages_array_is_rejected(): void
     {
         $this->postJson('/api/v1/inbound/messages', [

@@ -9,17 +9,13 @@ use App\Domain\Tenant\ValueObjects\TenantId;
 use App\Infrastructure\Persistence\MongoDB\Documents\AdminTaskDocument;
 use App\Infrastructure\Persistence\MongoDB\Mappers\AdminTaskMapper;
 use App\Infrastructure\Persistence\MongoDB\Support\ExplicitIdPersister;
-use MongoDB\Collection;
 
 final class MongoAdminTaskRepository implements AdminTaskRepositoryInterface
 {
-    private bool $indexesEnsured = false;
-
     public function __construct(private readonly AdminTaskMapper $mapper) {}
 
     public function save(AdminTask $task): void
     {
-        $this->ensureIndexes();
         ExplicitIdPersister::save(
             $this->mapper->toDocument($task),
             (string) $task->id(),
@@ -49,20 +45,5 @@ final class MongoAdminTaskRepository implements AdminTaskRepositoryInterface
             ->get()
             ->map(fn (AdminTaskDocument $document) => $this->mapper->toDomain($document))
             ->all();
-    }
-
-    private function ensureIndexes(): void
-    {
-        if ($this->indexesEnsured) {
-            return;
-        }
-
-        AdminTaskDocument::raw(static function (Collection $collection): void {
-            $collection->createIndexes([
-                ['key' => ['tenant_id' => 1, 'influencer_id' => 1, 'status' => 1], 'name' => 'admin_task_scope_status'],
-                ['key' => ['tenant_id' => 1, 'influencer_id' => 1, 'message_id' => 1], 'name' => 'admin_task_message_unique', 'unique' => true],
-            ]);
-        });
-        $this->indexesEnsured = true;
     }
 }

@@ -256,6 +256,7 @@ final class RegressionHarness
             new ContextPromptBuilder,
             new GenerateResponseHandler($this->gateway),
             $this->quality,
+            new FakeQualityChecks,
             $this->messages,
             $this->adminTasks,
             $events,

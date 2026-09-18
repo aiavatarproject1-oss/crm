@@ -2,17 +2,12 @@
 
 namespace App\Infrastructure\Persistence\MongoDB\Documents;
 
-use MongoDB\Laravel\Eloquent\Model;
 
-final class KnowledgeSourceDocument extends Model
+final class KnowledgeSourceDocument extends BaseDocument
 {
-    protected $connection = 'mongodb';
-
     protected $table = 'knowledge_sources';
 
     public $timestamps = false;
-
-    protected $guarded = [];
 
     protected function casts(): array
     {

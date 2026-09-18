@@ -20,6 +20,8 @@ use App\Application\Contracts\PersonaRepositoryInterface;
 use App\Application\Contracts\RuleRepositoryInterface;
 use App\Application\Exceptions\ApplicationException;
 use App\Application\Quality\Contracts\QualityCheckerInterface;
+use App\Application\Quality\Contracts\QualityCheckRepositoryInterface;
+use App\Application\Quality\DTO\QualityCheckRecord;
 use App\Application\Quality\DTO\QualityResult;
 use App\Application\RAG\Contracts\KnowledgeRetrieverInterface;
 use App\Application\RAG\DTO\KnowledgeSearchResult;
@@ -175,7 +177,7 @@ final class AiPipelineTest extends TestCase
         $events = new AiEvents;
         $evaluator = new EvaluateMessageRulesHandler(new AiRules($rules), new RuleMatcherRegistry([new KeywordRuleMatcher, new RegexRuleMatcher]), $events);
 
-        return [new ProcessMessageAiPipelineHandler($evaluator, new BuildConversationContextHandler($messages, new EmptyAiMemories, new BuildPersonaContextHandler(new AiPersonas), new AiKnowledge), new ContextPromptBuilder, new GenerateResponseHandler($gateway), $quality, $messages, $adminTasks, $events), $gateway, $messages, $quality, $adminTasks];
+        return [new ProcessMessageAiPipelineHandler($evaluator, new BuildConversationContextHandler($messages, new EmptyAiMemories, new BuildPersonaContextHandler(new AiPersonas), new AiKnowledge), new ContextPromptBuilder, new GenerateResponseHandler($gateway), $quality, new FakeQualityChecks, $messages, $adminTasks, $events), $gateway, $messages, $quality, $adminTasks];
     }
 
     private function message(string $content): Message
@@ -230,6 +232,22 @@ final class FakeQualityChecker implements QualityCheckerInterface
         }
 
         return new QualityResult($this->approved, $this->approved ? 0.95 : 0.2, $this->approved ? [] : ['unsafe'], $this->approved ? 'Approved.' : 'Quality policy failed.');
+    }
+}
+
+final class FakeQualityChecks implements QualityCheckRepositoryInterface
+{
+    /** @var list<QualityCheckRecord> */
+    public array $saved = [];
+
+    public function save(QualityCheckRecord $record): void
+    {
+        $this->saved[] = $record;
+    }
+
+    public function paginate(int $page, int $perPage, array $filters = []): array
+    {
+        return ['items' => $this->saved, 'total' => count($this->saved)];
     }
 }
 

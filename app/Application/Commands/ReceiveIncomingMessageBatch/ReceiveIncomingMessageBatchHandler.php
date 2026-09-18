@@ -3,6 +3,7 @@
 namespace App\Application\Commands\ReceiveIncomingMessageBatch;
 
 use App\Application\AI\Contracts\AiProcessingDispatcherInterface;
+use App\Application\Character\Contracts\CharacterSettingsRepositoryInterface;
 use App\Application\Contracts\AiProcessingTaskRepositoryInterface;
 use App\Application\Contracts\ConversationRepositoryInterface;
 use App\Application\Contracts\DomainEventPublisherInterface;
@@ -40,6 +41,7 @@ final readonly class ReceiveIncomingMessageBatchHandler
         private DomainEventPublisherInterface $events,
         private AiProcessingTaskRepositoryInterface $aiTasks,
         private AiProcessingDispatcherInterface $aiDispatcher,
+        private ?CharacterSettingsRepositoryInterface $characters = null,
         private ?StructuredLoggerInterface $logger = null,
     ) {}
 
@@ -94,18 +96,27 @@ final readonly class ReceiveIncomingMessageBatchHandler
                 ...$item->metadata,
                 'raw_payload' => $item->raw_payload,
             ];
+            if ($item->media !== []) {
+                $metadata['media'] = $item->media;
+            }
+
+            $contentType = $item->content_type !== '' ? $item->content_type : 'text';
+            $text = trim($item->text) !== ''
+                ? $item->text
+                : ($contentType === 'image' || $item->media !== [] ? '[image]' : '[media]');
+
             $message = Message::create(
                 new MessageId(self::id()),
                 $tenantId,
                 $influencerId,
                 $conversation->id(),
                 'user',
-                new MessageContent($item->text),
+                new MessageContent($text),
                 new ExternalMessageId($item->external_message_id),
                 $platform,
                 $item->received_at,
                 'incoming',
-                'text',
+                $contentType,
                 $metadata,
                 $batchId,
             );
@@ -129,6 +140,8 @@ final readonly class ReceiveIncomingMessageBatchHandler
                 'duplicate_count' => $duplicateCount,
             ]);
 
+            $notify = $this->supportNotify((string) $tenantId, (string) $influencerId, (string) $conversation->id());
+
             return new MessageBatchIngestionResult(
                 '',
                 (string) $conversation->id(),
@@ -139,6 +152,12 @@ final readonly class ReceiveIncomingMessageBatchHandler
                 $messageIdStrings,
                 false,
                 true,
+                '',
+                $conversation->status()->blocksAi(),
+                $conversation->status()->blocksAi(),
+                $notify['notify'],
+                $notify['notify_mode'],
+                $notify['panel_url'],
             );
         }
 
@@ -161,32 +180,44 @@ final readonly class ReceiveIncomingMessageBatchHandler
         );
         $this->batches->save($batch);
 
-        $existingTask = $this->aiTasks->findByMessageBatch($tenantId, $influencerId, $batchId);
+        $inHandoff = $conversation->status()->blocksAi();
         $taskId = '';
-        if ($existingTask === null) {
-            $task = AiProcessingTask::create(
-                new AiProcessingTaskId(self::id()),
-                $tenantId,
-                $influencerId,
-                $conversation->id(),
-                $batchId,
-                [
-                    'user_id' => (string) $user->id(),
-                    'trigger_message_id' => (string) $resolvedIds[array_key_last($resolvedIds)],
-                ],
-            );
-            $this->aiTasks->save($task);
-            $this->aiDispatcher->dispatch($task);
-            $taskId = (string) $task->id();
-            $this->logger?->info('inbound.batch.task_dispatched', [
+
+        if ($inHandoff) {
+            $this->logger?->info('inbound.batch.ai_skipped_handoff', [
                 'tenant_id' => (string) $tenantId,
                 'influencer_id' => (string) $influencerId,
                 'conversation_id' => (string) $conversation->id(),
                 'batch_id' => (string) $batchId,
-                'task_id' => $taskId,
+                'status' => $conversation->status()->value,
             ]);
         } else {
-            $taskId = (string) $existingTask->id();
+            $existingTask = $this->aiTasks->findByMessageBatch($tenantId, $influencerId, $batchId);
+            if ($existingTask === null) {
+                $task = AiProcessingTask::create(
+                    new AiProcessingTaskId(self::id()),
+                    $tenantId,
+                    $influencerId,
+                    $conversation->id(),
+                    $batchId,
+                    [
+                        'user_id' => (string) $user->id(),
+                        'trigger_message_id' => (string) $resolvedIds[array_key_last($resolvedIds)],
+                    ],
+                );
+                $this->aiTasks->save($task);
+                $this->aiDispatcher->dispatch($task);
+                $taskId = (string) $task->id();
+                $this->logger?->info('inbound.batch.task_dispatched', [
+                    'tenant_id' => (string) $tenantId,
+                    'influencer_id' => (string) $influencerId,
+                    'conversation_id' => (string) $conversation->id(),
+                    'batch_id' => (string) $batchId,
+                    'task_id' => $taskId,
+                ]);
+            } else {
+                $taskId = (string) $existingTask->id();
+            }
         }
 
         $this->logger?->info('inbound.batch.completed', [
@@ -197,6 +228,8 @@ final readonly class ReceiveIncomingMessageBatchHandler
             'created_count' => $createdCount,
             'duplicate_count' => $duplicateCount,
         ]);
+
+        $notify = $this->supportNotify((string) $tenantId, (string) $influencerId, (string) $conversation->id());
 
         return new MessageBatchIngestionResult(
             (string) $batch->id(),
@@ -209,6 +242,11 @@ final readonly class ReceiveIncomingMessageBatchHandler
             true,
             false,
             $taskId,
+            $inHandoff,
+            $inHandoff,
+            $notify['notify'],
+            $notify['notify_mode'],
+            $notify['panel_url'],
         );
     }
 
@@ -261,6 +299,34 @@ final readonly class ReceiveIncomingMessageBatchHandler
         }
 
         return $latest;
+    }
+
+    /**
+     * @return array{notify: list<string>, notify_mode: string, panel_url: ?string}
+     */
+    private function supportNotify(string $tenantId, string $characterId, string $conversationId): array
+    {
+        $character = $this->characters?->findByCharacter($tenantId, $characterId);
+        $handoff = (array) ($character?->handoff ?? []);
+        $notify = [];
+        foreach ((array) ($handoff['support_telegram_ids'] ?? []) as $id) {
+            $id = trim((string) $id);
+            if ($id !== '') {
+                $notify[] = $id;
+            }
+        }
+
+        $panelUrl = null;
+        if ($handoff['panel_deep_link'] ?? true) {
+            $panelBase = rtrim((string) config('app.admin_panel_url', 'http://localhost:3000'), '/');
+            $panelUrl = $panelBase.'/fa/conversations/'.$conversationId;
+        }
+
+        return [
+            'notify' => array_values(array_unique($notify)),
+            'notify_mode' => (string) ($handoff['notify_mode'] ?? 'all'),
+            'panel_url' => $panelUrl,
+        ];
     }
 
     private static function id(): string

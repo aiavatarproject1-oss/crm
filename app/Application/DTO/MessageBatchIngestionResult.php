@@ -18,6 +18,11 @@ final readonly class MessageBatchIngestionResult
         public bool $created,
         public bool $duplicate,
         public string $task_id = '',
+        public bool $ai_skipped = false,
+        public bool $handoff = false,
+        public array $notify = [],
+        public string $notify_mode = 'all',
+        public ?string $panel_url = null,
     ) {}
 
     public function toArray(): array
@@ -34,6 +39,11 @@ final readonly class MessageBatchIngestionResult
             'message_ids' => $this->message_ids,
             'created' => $this->created,
             'duplicate' => $this->duplicate,
+            'ai_skipped' => $this->ai_skipped,
+            'handoff' => $this->handoff,
+            'notify' => $this->notify,
+            'notify_mode' => $this->notify_mode,
+            'panel_url' => $this->panel_url,
         ];
     }
 

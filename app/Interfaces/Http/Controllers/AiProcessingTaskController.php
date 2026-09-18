@@ -32,7 +32,15 @@ final readonly class AiProcessingTaskController
                 'tenant_id' => (string) $task->tenantId,
                 'influencer_id' => (string) $task->influencerId,
                 'conversation_id' => (string) $task->conversationId,
-                'message_batch_id' => (string) $task->messageBatchId,
+                'message_batch_id' => (string) ($task->metadata()['message_batch_id'] ?? $task->messageBatchId),
+                'vision_used' => (bool) ($task->metadata()['vision_used'] ?? false),
+                'silent' => (bool) ($task->metadata()['silent'] ?? false),
+                'handoff' => (bool) ($task->metadata()['handoff'] ?? false),
+                'vision_fail' => (bool) ($task->metadata()['vision_fail'] ?? false),
+                'notify' => array_values(array_filter((array) ($task->metadata()['notify'] ?? []))),
+                'notify_mode' => (string) ($task->metadata()['notify_mode'] ?? 'all'),
+                'panel_url' => $task->metadata()['panel_url'] ?? null,
+                'assistant_message_id' => $task->metadata()['assistant_message_id'] ?? null,
             ],
         ]);
     }

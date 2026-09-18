@@ -36,6 +36,8 @@ final readonly class IncomingMessageBatchData
                     $message->received_at,
                     $message->metadata,
                     $message->raw_payload,
+                    'text',
+                    [],
                 ),
             ],
             ['source' => 'single_platform_payload'],
@@ -71,6 +73,8 @@ final readonly class IncomingMessageBatchData
                 static fn (IncomingBatchMessageItem $item): array => [
                     'external_message_id' => $item->external_message_id,
                     'text' => $item->text,
+                    'content_type' => $item->content_type,
+                    'media' => $item->media,
                     'received_at' => $item->received_at->format(DATE_ATOM),
                     'metadata' => $item->metadata,
                     'raw_payload' => $item->raw_payload,

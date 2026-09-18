@@ -12,12 +12,9 @@ use App\Domain\Tenant\ValueObjects\TenantId;
 use App\Infrastructure\Persistence\MongoDB\Documents\VectorRecordDocument;
 use App\Infrastructure\Persistence\MongoDB\Mappers\VectorRecordMapper;
 use App\Infrastructure\Persistence\MongoDB\Support\ExplicitIdPersister;
-use MongoDB\Collection;
 
 final class MongoVectorStore implements VectorRecordRepositoryInterface, VectorStoreInterface
 {
-    private bool $indexesEnsured = false;
-
     public function __construct(private readonly VectorRecordMapper $mapper) {}
 
     public function save(VectorRecord $record): void
@@ -27,7 +24,6 @@ final class MongoVectorStore implements VectorRecordRepositoryInterface, VectorS
 
     public function store(VectorRecord $record): void
     {
-        $this->ensureIndexes();
         ExplicitIdPersister::save(
             $this->mapper->toDocument($record),
             (string) $record->id(),
@@ -48,7 +44,6 @@ final class MongoVectorStore implements VectorRecordRepositoryInterface, VectorS
         string $embeddingModel,
         string $contentHash,
     ): ?VectorRecord {
-        $this->ensureIndexes();
         $document = VectorRecordDocument::query()
             ->where('tenant_id', (string) $tenantId)
             ->where('influencer_id', (string) $influencerId)
@@ -65,8 +60,6 @@ final class MongoVectorStore implements VectorRecordRepositoryInterface, VectorS
         InfluencerId $influencerId,
         KnowledgeChunkId $chunkId,
     ): array {
-        $this->ensureIndexes();
-
         return VectorRecordDocument::query()
             ->where('tenant_id', (string) $tenantId)
             ->where('influencer_id', (string) $influencerId)
@@ -82,7 +75,6 @@ final class MongoVectorStore implements VectorRecordRepositoryInterface, VectorS
             return [];
         }
 
-        $this->ensureIndexes();
         $records = VectorRecordDocument::query()->where('tenant_id', (string) $tenantId)
             ->where('influencer_id', (string) $influencerId)->get()
             ->map(fn (VectorRecordDocument $document) => $this->mapper->toDomain($document))->all();
@@ -118,33 +110,5 @@ final class MongoVectorStore implements VectorRecordRepositoryInterface, VectorS
         }
 
         return $leftNorm == 0.0 || $rightNorm == 0.0 ? 0.0 : $dot / (sqrt($leftNorm) * sqrt($rightNorm));
-    }
-
-    private function ensureIndexes(): void
-    {
-        if ($this->indexesEnsured) {
-            return;
-        }
-
-        VectorRecordDocument::raw(static function (Collection $collection): void {
-            $collection->createIndexes([
-                [
-                    'key' => ['tenant_id' => 1, 'influencer_id' => 1, 'chunk_id' => 1],
-                    'name' => 'knowledge_vector_scope_chunk',
-                ],
-                [
-                    'key' => [
-                        'tenant_id' => 1,
-                        'influencer_id' => 1,
-                        'chunk_id' => 1,
-                        'embedding_model' => 1,
-                        'content_hash' => 1,
-                    ],
-                    'name' => 'knowledge_vector_idempotency_unique',
-                    'unique' => true,
-                ],
-            ]);
-        });
-        $this->indexesEnsured = true;
     }
 }

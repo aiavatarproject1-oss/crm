@@ -26,7 +26,7 @@ final class AiProcessingTaskMapper
             'error' => $task->error(),
             'started_at' => $task->startedAt(),
             'finished_at' => $task->finishedAt(),
-            'metadata' => $task->metadata,
+            'metadata' => $task->metadata(),
         ]);
         $document->setAttribute('_id', (string) $task->id());
 

@@ -25,7 +25,7 @@ final class AiProcessingTask implements Entity
         private ?string $error,
         private ?DateTimeImmutable $startedAt,
         private ?DateTimeImmutable $finishedAt,
-        public readonly array $metadata,
+        private array $metadata,
     ) {}
 
     /**
@@ -114,6 +114,22 @@ final class AiProcessingTask implements Entity
     public function finishedAt(): ?DateTimeImmutable
     {
         return $this->finishedAt;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function metadata(): array
+    {
+        return $this->metadata;
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     */
+    public function mergeMetadata(array $extra): void
+    {
+        $this->metadata = array_replace($this->metadata, $extra);
     }
 
     public function markProcessing(?DateTimeImmutable $at = null): void

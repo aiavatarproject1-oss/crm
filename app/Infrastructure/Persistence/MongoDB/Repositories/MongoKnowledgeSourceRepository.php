@@ -10,17 +10,13 @@ use App\Domain\Tenant\ValueObjects\TenantId;
 use App\Infrastructure\Persistence\MongoDB\Documents\KnowledgeSourceDocument;
 use App\Infrastructure\Persistence\MongoDB\Mappers\KnowledgeSourceMapper;
 use App\Infrastructure\Persistence\MongoDB\Support\ExplicitIdPersister;
-use MongoDB\Collection;
 
 final class MongoKnowledgeSourceRepository implements KnowledgeSourceRepositoryInterface
 {
-    private bool $indexesEnsured = false;
-
     public function __construct(private readonly KnowledgeSourceMapper $mapper) {}
 
     public function save(KnowledgeSource $source): void
     {
-        $this->ensureIndexes();
         ExplicitIdPersister::save(
             $this->mapper->toDocument($source),
             (string) $source->id(),
@@ -47,26 +43,5 @@ final class MongoKnowledgeSourceRepository implements KnowledgeSourceRepositoryI
             ->first();
 
         return $document === null ? null : $this->mapper->toDomain($document);
-    }
-
-    private function ensureIndexes(): void
-    {
-        if ($this->indexesEnsured) {
-            return;
-        }
-
-        KnowledgeSourceDocument::raw(static function (Collection $collection): void {
-            $collection->createIndexes([
-                [
-                    'key' => ['tenant_id' => 1, 'influencer_id' => 1, 'checksum' => 1],
-                    'name' => 'knowledge_sources_scope_checksum',
-                ],
-                [
-                    'key' => ['tenant_id' => 1, 'influencer_id' => 1, 'status' => 1, 'created_at' => -1],
-                    'name' => 'knowledge_sources_scope_status_created',
-                ],
-            ]);
-        });
-        $this->indexesEnsured = true;
     }
 }

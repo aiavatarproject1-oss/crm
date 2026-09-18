@@ -114,6 +114,8 @@ Unhealthy dependencies return **503**.
 
 `POST /api/v1/inbound/messages`
 
+Text-only:
+
 ```json
 {
   "tenant_id": "{{tenant_id}}",
@@ -127,6 +129,73 @@ Unhealthy dependencies return **503**.
   ]
 }
 ```
+
+With image (JSON URL — not multipart upload). Postman request: **08b Inbound Message Batch + Image Media**. Set `media_url` in the environment/collection.
+
+### curl (copy/paste)
+
+Base URL: `https://resale-displace-banker.ngrok-free.dev/api`
+
+```bash
+curl --location 'https://resale-displace-banker.ngrok-free.dev/api/v1/inbound/messages' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--header 'X-Correlation-ID: postman-run-1' \
+--data '{
+  "tenant_id": "4949281fbd8ff14572d84ffa3b9eb676",
+  "influencer_id": "2daab453bc302567b1baf3d43e3cdd2d",
+  "platform": "telegram",
+  "external_user_id": "tg-user-100",
+  "username": "amir",
+  "messages": [
+    {
+      "external_message_id": "msg-hi-1789661008958",
+      "text": "Hi Sofia"
+    },
+    {
+      "external_message_id": "msg-photo-1789661008958",
+      "content_type": "image",
+      "text": "Guess my age and gender from this photo",
+      "media": [
+        {
+          "url": "https://picsum.photos/seed/estelle-test/800/1000.jpg",
+          "type": "image",
+          "mime_type": "image/jpeg"
+        }
+      ]
+    }
+  ]
+}'
+```
+
+JSON shape (Postman variables):
+
+```json
+{
+  "tenant_id": "{{tenant_id}}",
+  "influencer_id": "{{influencer_id}}",
+  "platform": "telegram",
+  "external_user_id": "tg-user-100",
+  "username": "amir",
+  "messages": [
+    { "external_message_id": "msg-1", "text": "Hi Sofia" },
+    {
+      "external_message_id": "msg-photo-1",
+      "content_type": "image",
+      "text": "Guess my age and gender from this photo",
+      "media": [
+        {
+          "url": "{{media_url}}",
+          "type": "image",
+          "mime_type": "image/jpeg"
+        }
+      ]
+    }
+  ]
+}
+```
+
+When `media[].url` is present, the queue pipeline runs vision (`OLLAMA_VISION_MODEL`, default `qwen2.5vl:7b`) once, then the chat LLM. No image in the batch → vision is skipped.
 
 **201**
 

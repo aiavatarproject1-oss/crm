@@ -7,6 +7,7 @@ use App\Application\Commands\ReceiveIncomingMessageBatch\ReceiveIncomingMessageB
 use App\Application\DTO\IncomingBatchMessageItem;
 use App\Application\DTO\IncomingMessageBatchData;
 use App\Application\Observability\Contracts\StructuredLoggerInterface;
+use App\Application\Observability\PipelineMonitor;
 use App\Infrastructure\Messaging\PlatformResolver;
 use App\Interfaces\Http\Requests\InboundMessageRequest;
 use DateTimeImmutable;
@@ -20,17 +21,21 @@ final readonly class InboundMessageController
         private PlatformResolver $resolver,
         private ReceiveIncomingMessageBatchHandler $handler,
         private ?StructuredLoggerInterface $logger = null,
+        private ?PipelineMonitor $pipeline = null,
     ) {}
 
     public function store(InboundMessageRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        $summary = PipelineMonitor::summarizeInbound($validated);
         $this->logger?->info('inbound.request.received', [
             'platform' => $validated['platform'] ?? null,
             'tenant_id' => $validated['tenant_id'] ?? null,
             'influencer_id' => $validated['influencer_id'] ?? null,
             'has_messages_array' => isset($validated['messages']),
+            'image_message_count' => $summary['image_message_count'] ?? 0,
         ]);
+        $this->pipeline?->info('inbound.request.received', $summary);
 
         $batch = isset($validated['messages'])
             ? $this->batchFromMessages($validated)
@@ -44,6 +49,19 @@ final readonly class InboundMessageController
             'created' => $result->created,
             'duplicate' => $result->duplicate,
             'created_count' => $result->created_count,
+            'status' => $result->created ? 201 : 200,
+        ]);
+        $this->pipeline?->info('inbound.request.completed', [
+            'tenant_id' => $validated['tenant_id'] ?? null,
+            'influencer_id' => $validated['influencer_id'] ?? null,
+            'platform' => $validated['platform'] ?? null,
+            'created' => $result->created,
+            'duplicate' => $result->duplicate,
+            'created_count' => $result->created_count,
+            'task_id' => $result->task_id,
+            'conversation_id' => $result->conversation_id,
+            'batch_id' => $result->batch_id,
+            'user_id' => $result->user_id,
             'status' => $result->created ? 201 : 200,
         ]);
 
@@ -64,12 +82,35 @@ final readonly class InboundMessageController
                 ? new DateTimeImmutable((string) $item['received_at'])
                 : new DateTimeImmutable;
 
+            $media = array_values(array_map(
+                static function (array $entry): array {
+                    $normalized = ['url' => (string) $entry['url']];
+                    if (isset($entry['type'])) {
+                        $normalized['type'] = (string) $entry['type'];
+                    }
+                    if (isset($entry['mime_type'])) {
+                        $normalized['mime_type'] = (string) $entry['mime_type'];
+                    }
+
+                    return $normalized;
+                },
+                array_filter((array) ($item['media'] ?? []), static fn ($entry): bool => is_array($entry) && isset($entry['url'])),
+            ));
+
+            $contentType = (string) ($item['content_type'] ?? ($media !== [] ? 'image' : 'text'));
+            $text = (string) ($item['text'] ?? '');
+            if (trim($text) === '') {
+                $text = $contentType === 'image' || $media !== [] ? '[image]' : '[media]';
+            }
+
             $messages[] = new IncomingBatchMessageItem(
                 (string) $item['external_message_id'],
-                (string) $item['text'],
+                $text,
                 $receivedAt,
                 (array) ($item['metadata'] ?? []),
                 (array) ($item['raw_payload'] ?? []),
+                $contentType,
+                $media,
             );
         }
 

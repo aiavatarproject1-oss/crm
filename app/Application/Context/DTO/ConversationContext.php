@@ -2,6 +2,7 @@
 
 namespace App\Application\Context\DTO;
 
+use App\Application\Character\DTO\CharacterSettingsData;
 use App\Application\Context\Services\SalesFunnelStageResolver;
 
 final readonly class ConversationContext
@@ -17,5 +18,6 @@ final readonly class ConversationContext
         public PersonaContext $influencer_persona,
         public array $knowledge_context = [],
         public string $sales_stage = SalesFunnelStageResolver::WARMUP,
+        public ?CharacterSettingsData $character = null,
     ) {}
 }

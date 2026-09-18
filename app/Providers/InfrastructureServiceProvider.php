@@ -8,6 +8,7 @@ use App\Application\AI\Contracts\EmbeddingProviderInterface;
 use App\Application\AI\Contracts\LlmGatewayInterface;
 use App\Application\AI\Contracts\MessageAiPipelineInterface;
 use App\Application\AI\Contracts\PromptBuilderInterface;
+use App\Application\AI\Contracts\VisionAnalyzerInterface;
 use App\Application\AI\Prompt\ContextPromptBuilder;
 use App\Application\AI\Services\PromptPolicyService;
 use App\Application\Context\BuildConversationContextHandler;
@@ -54,6 +55,7 @@ use App\Application\Memory\Services\MessageBatchMemoryExtractor;
 use App\Application\Observability\Contracts\MetricsCollectorInterface;
 use App\Application\Observability\Contracts\StructuredLoggerInterface;
 use App\Application\Observability\CorrelationContext;
+use App\Application\Observability\PipelineMonitor;
 use App\Application\Quality\Contracts\QualityCheckerInterface;
 use App\Application\RAG\Contracts\KnowledgeRetrieverInterface;
 use App\Application\RAG\Contracts\RetrievalStrategyInterface;
@@ -62,6 +64,7 @@ use App\Application\RAG\RetrievalService;
 use App\Application\RAG\Strategies\VectorSimilarityRetrievalStrategy;
 use App\Infrastructure\AI\Ollama\OllamaEmbeddingProvider;
 use App\Infrastructure\AI\Ollama\OllamaLlmGateway;
+use App\Infrastructure\AI\Ollama\OllamaVisionAnalyzer;
 use App\Infrastructure\AI\Ollama\QwenQualityChecker;
 use App\Infrastructure\Events\LaravelDomainEventPublisher;
 use App\Infrastructure\Health\MongoHealthCheck;
@@ -69,7 +72,9 @@ use App\Infrastructure\Health\OllamaHealthCheck;
 use App\Infrastructure\Health\QueueHealthCheck;
 use App\Infrastructure\Health\RedisHealthCheck;
 use App\Infrastructure\Memory\LlmMemoryExtractionGateway;
+use App\Infrastructure\Observability\BroadcastPipelineEventSink;
 use App\Infrastructure\Observability\LaravelStructuredLogger;
+use App\Infrastructure\Observability\MongoPipelineEventSink;
 use App\Infrastructure\Observability\StructuredLogMetricsCollector;
 use App\Infrastructure\Persistence\MongoDB\Repositories\MongoAdminTaskRepository;
 use App\Infrastructure\Persistence\MongoDB\Repositories\MongoAiProcessingTaskRepository;
@@ -94,6 +99,17 @@ class InfrastructureServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(CorrelationContext::class);
+        $this->app->singleton(PipelineMonitor::class, function ($app): PipelineMonitor {
+            $sinks = [];
+            if ((bool) config('observability.pipeline_events.store', true)) {
+                $sinks[] = $app->make(MongoPipelineEventSink::class);
+            }
+            if ((bool) config('observability.pipeline_events.broadcast', true) && config('broadcasting.default') !== 'null') {
+                $sinks[] = $app->make(BroadcastPipelineEventSink::class);
+            }
+
+            return new PipelineMonitor($app->make(CorrelationContext::class), $sinks);
+        });
         $this->app->singleton(StructuredLoggerInterface::class, LaravelStructuredLogger::class);
         $this->app->singleton(MetricsCollectorInterface::class, StructuredLogMetricsCollector::class);
         $this->app->singleton(HealthCheckService::class, fn ($app): HealthCheckService => new HealthCheckService([
@@ -105,6 +121,7 @@ class InfrastructureServiceProvider extends ServiceProvider
 
         $this->app->bind(UserRepositoryInterface::class, MongoUserRepository::class);
         $this->app->bind(AdminTaskRepositoryInterface::class, MongoAdminTaskRepository::class);
+        $this->app->bind(\App\Application\Quality\Contracts\QualityCheckRepositoryInterface::class, \App\Infrastructure\Persistence\MongoDB\Repositories\MongoQualityCheckRepository::class);
         $this->app->bind(PromptPolicyRepositoryInterface::class, MongoPromptPolicyRepository::class);
         $this->app->bind(PromptPolicyService::class, PromptPolicyService::class);
         $this->app->bind(PromptBuilderInterface::class, ContextPromptBuilder::class);
@@ -120,6 +137,7 @@ class InfrastructureServiceProvider extends ServiceProvider
             $app->make(KnowledgeRetrieverInterface::class),
             $app->make(SalesFunnelStageResolver::class),
             (bool) config('rag.enabled', true),
+            $app->make(\App\Application\Character\Contracts\CharacterSettingsRepositoryInterface::class),
         ));
         $this->app->bind(ConversationRepositoryInterface::class, MongoConversationRepository::class);
         $this->app->bind(KnowledgeDocumentRepositoryInterface::class, MongoKnowledgeDocumentRepository::class);
@@ -178,6 +196,15 @@ class InfrastructureServiceProvider extends ServiceProvider
             $app->make(Factory::class),
             (string) config('services.ollama.base_url'),
             (string) config('services.ollama.quality_model'),
+        ));
+        $this->app->singleton(VisionAnalyzerInterface::class, fn ($app): OllamaVisionAnalyzer => new OllamaVisionAnalyzer(
+            $app->make(Factory::class),
+            (string) config('services.ollama.base_url'),
+            (string) config('services.ollama.vision_model', 'qwen2.5vl:7b'),
+            (bool) config('services.ollama.vision_enabled', true),
+            (int) config('services.ollama.vision_timeout', 120),
+            $app->make(StructuredLoggerInterface::class),
+            $app->make(PipelineMonitor::class),
         ));
         $this->app->bind(MessageAiPipelineInterface::class, ProcessMessageAiPipelineHandler::class);
     }

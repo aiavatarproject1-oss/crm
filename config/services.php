@@ -40,6 +40,9 @@ return [
         'model' => env('OLLAMA_MODEL', 'llama3.2'),
         'embedding_model' => env('OLLAMA_EMBEDDING_MODEL', 'nomic-embed-text'),
         'quality_model' => env('OLLAMA_QUALITY_MODEL', env('OLLAMA_MODEL', 'qwen2.5:7b')),
+        'vision_model' => env('OLLAMA_VISION_MODEL', 'qwen2.5vl:7b'),
+        'vision_enabled' => (bool) env('OLLAMA_VISION_ENABLED', true),
+        'vision_timeout' => (int) env('OLLAMA_VISION_TIMEOUT', 120),
     ],
 
 ];

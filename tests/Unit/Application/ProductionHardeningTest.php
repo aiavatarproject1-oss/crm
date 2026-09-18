@@ -152,7 +152,7 @@ final class ProductionHardeningTest extends TestCase
             $messages,
             new class implements MessageAiPipelineInterface
             {
-                public function process(Message $message, UserId $userId): void
+                public function process(Message $message, UserId $userId, array $metadata = []): \App\Application\AI\DTO\AiPipelineResult
                 {
                     throw new ApplicationException('LLM response generation failed.');
                 }
